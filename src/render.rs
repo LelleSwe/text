@@ -1,14 +1,19 @@
 use crossterm::{execute, cursor::MoveTo, terminal::ClearType};
-use std::io::stdout;
+use std::io::{stdout, Write};
 
 use crate::user_interact::Cursor;
 
-pub(crate) fn update_cursor(cursor: &Cursor) {
-    let _ = execute!(stdout(), MoveTo(cursor.pos_x, cursor.pos_y));
+pub(crate) fn update_cursor(cursor: &Cursor) -> Result<bool, std::io::Error> {
+    let _ = execute!(stdout(), MoveTo(cursor.pos_x, cursor.pos_y))?;
+    Ok(true)
 }
 
-pub(crate) fn draw_line() {
-
+pub(crate) fn draw_line(row: Vec<char>) -> Result<bool, std::io::Error> {
+    for i in row {
+        let _ = write!(stdout(), "{}", i)?;
+        let _ = stdout().flush()?;
+    }
+    Ok(true)
 }
 
 pub(crate) fn clear_screen() -> Result<bool, std::io::Error> {
