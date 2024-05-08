@@ -36,11 +36,11 @@ impl fmt::Display for ReadError {
     }
 }*/
 
-fn run(cursor: &mut Cursor) -> Result<bool, std::io::Error> {
+fn run(cursor: &mut Cursor) -> Result<&mut Cursor, std::io::Error> {
     let _ = update_cursor(cursor);
     let event = process_keypress();
-    cursor = move_cursor(cursor, event);
-    Ok(true)
+    let mut cursor = move_cursor(cursor, event);
+    Ok(cursor)
 }
 
 fn main() -> io::Result<()> {
@@ -50,7 +50,7 @@ fn main() -> io::Result<()> {
     };
     //execute!(io::stdout(), SetSize(cols, rows))?;
 
-    while run(&mut cursor).unwrap() {
+    while let mut cursor = run(&mut cursor).unwrap() {
 
     };
 

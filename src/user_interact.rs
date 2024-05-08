@@ -3,6 +3,7 @@ use std::{time::{Duration}};
 use std::io::{stdout, Write};
 use serde::Serialize;
 
+use crate::constants::default_cursor_keybinds;
 use crate::terminate_program;
 
 pub(crate) fn read_key() -> Result<KeyEvent, std::io::Error> {
@@ -15,26 +16,38 @@ pub(crate) fn read_key() -> Result<KeyEvent, std::io::Error> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Cursor {
     pub(crate) pos_x: u16,
     pub(crate) pos_y: u16
 }
 
-pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: KeyEvent) -> &mut Cursor {    
+pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: KeyEvent) -> &mut Cursor {
+    let CursorKeybinds {MoveUp, MoveDown, MoveLeft, MoveRight, MoveLast, MoveFirst, MoveWordLeft, MoveWordRight, MovePageDown, MovePageUp} = default_cursor_keybinds;
+    //assert_eq!(MoveUp, move_command);
+    if move_command == MoveDown {write!(stdout(), "down\n");}
+    if move_command == MoveUp {write!(stdout(), "up\n");}
+    if move_command == MoveRight {write!(stdout(), "right\n");}
+    if move_command == MoveLeft {write!(stdout(), "left\n");}
     match move_command {
-        default_cursor_keybinds@MoveUp => cursor.pos_y += 1,
-        default_cursor_keybinds@MoveDown => cursor.pos_y -= 1,
-        default_cursor_keybinds@MoveLeft => cursor.pos_x -= 1,
-        default_cursor_keybinds@MoveRight => cursor.pos_x += 1,
-        default_cursor_keybinds@MoveLast => unimplemented!(),
-        default_cursor_keybinds@MoveFirst => {let mut cursor = Cursor { pos_x: 0, pos_y: 0};
-    let mut cursor = &cursor;},
-        default_cursor_keybinds@MoveWordLeft => unimplemented!(),
-        default_cursor_keybinds@MoveWordRight => unimplemented!(),
-        default_cursor_keybinds@PageDown => unimplemented!(),
-        default_cursor_keybinds@PageUp => unimplemented!(),
-        _ => ()
+        
+        MoveDown => cursor.pos_y -= 1,
+        MoveUp => {cursor.pos_y += 1;},
+        MoveLeft => cursor.pos_x -= 1,
+        MoveRight => cursor.pos_x += 1,
+        MoveLast => unimplemented!(),
+        MoveFirst => {
+            let mut cursor = Cursor { pos_x: 0, pos_y: 0};
+            let mut cursor = &cursor;
+        },
+        MoveWordLeft => unimplemented!(),
+        MoveWordRight => unimplemented!(),
+        PageDown => unimplemented!(),
+        PageUp => unimplemented!(),
+        _ => {write!(stdout(), "\nfail");}
     };
+    let tttt = format!("{:?}", cursor);
+    write!(stdout(), "{}", tttt);
     cursor
 }
 
@@ -65,7 +78,7 @@ pub(crate) struct Keybinds {
     pub(crate) CursorKeybinds: CursorKeybinds
 }
 
-//#[derive(Serialize)]
+//#[derive(std::fmt::Display)]
 pub(crate) struct CursorKeybinds {
     pub(crate) MoveUp: KeyEvent,
     pub(crate) MoveDown: KeyEvent,
