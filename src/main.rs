@@ -1,5 +1,6 @@
 use std::io::{self, stdout};
-use crossterm::{execute, terminal::{disable_raw_mode, enable_raw_mode, SetSize, EnterAlternateScreen, LeaveAlternateScreen}};
+use crossterm::{execute, queue, terminal::{disable_raw_mode, enable_raw_mode, SetSize, EnterAlternateScreen, LeaveAlternateScreen}};
+use crossterm::cursor::{Show, Hide};
 use crate::user_interact::*;
 use crate::render::*;
 
@@ -16,10 +17,12 @@ fn setup() -> Result<(Cursor, Window), std::io::Error> {
     };
     let mut window = Window {
         size_x: 120,
-        size_y: 30
+        size_y: 30,
+        x_offset: 0,
+        y_offset: 0
     };
 
-    let _ = execute!(io::stdout(), SetSize(window.size_x, window.size_y))?;
+    let _ = execute!(io::stdout(), SetSize(window.size_x.try_into().unwrap(), window.size_y.try_into().unwrap()))?;
     let _ = clear_screen()?;
     Ok((cursor, window))
 }
@@ -36,24 +39,22 @@ impl fmt::Display for ReadError {
     }
 }*/
 
-fn run(cursor: &mut Cursor) -> Result<&mut Cursor, std::io::Error> {
-    let _ = update_cursor(cursor);
-    let event = process_keypress();
-    let mut cursor = move_cursor(cursor, event);
-    Ok(cursor)
-}
-
 fn main() -> io::Result<()> {
     let Ok((mut cursor, window)) = setup()
     else {
         unimplemented!()
     };
+    let mut data = vec!(vec!('e','e'),vec!('w'));
+    let _ = draw_screen(&data);
     //execute!(io::stdout(), SetSize(cols, rows))?;
-
-    while let mut cursor = run(&mut cursor).unwrap() {
-
-    };
-
+    loop {
+        let event = process_keypress();
+        let _ = draw_line(&data, &cursor);
+        let _ = queue!(stdout(), crossterm::cursor::Show);
+        let mut cursor = move_cursor(&mut cursor, event, &window, &data);
+        let _ = update_cursor(&mut cursor);
+        let _ = queue!(stdout(), crossterm::cursor::Hide);    
+    }
     return Ok(());
 }
 

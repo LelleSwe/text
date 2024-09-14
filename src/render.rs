@@ -4,15 +4,28 @@ use std::io::{stdout, Write};
 use crate::user_interact::Cursor;
 
 pub(crate) fn update_cursor(cursor: &Cursor) -> Result<bool, std::io::Error> {
-    let _ = execute!(stdout(), MoveTo(cursor.pos_x, cursor.pos_y))?;
+    let _ = execute!(stdout(), MoveTo(cursor.pos_x.try_into().unwrap(), cursor.pos_y.try_into().unwrap()))?;
     Ok(true)
 }
 
-pub(crate) fn draw_line(row: Vec<char>) -> Result<bool, std::io::Error> {
-    for i in row {
+pub(crate) fn draw_line(data: &Vec<Vec<char>>, cursor: &Cursor) -> Result<bool, std::io::Error> {
+    if cursor.pos_y > (data.len() - 1).try_into().unwrap() {return Ok(true)}
+    let _ = execute!(stdout(), MoveTo(0, cursor.pos_y.try_into().unwrap()))?;
+    for i in &data[cursor.pos_y as usize] {
         let _ = write!(stdout(), "{}", i)?;
-        let _ = stdout().flush()?;
     }
+    let _ = stdout().flush()?;
+    Ok(true)
+}
+
+pub(crate) fn draw_screen(data: &Vec<Vec<char>>) -> Result<bool, std::io::Error> {
+    for i in 0..data.len() {
+        for j in &data[i] {
+            let _ = write!(stdout(), "{}", j)?;
+        }
+        let _ = write!(stdout(), "\n")?;
+    }
+    let _ = stdout().flush()?;
     Ok(true)
 }
 
@@ -26,7 +39,10 @@ pub(crate) fn clear_line() -> Result<bool, std::io::Error> {
     Ok(true)
 }
 
+#[derive(Debug, Copy, Clone)]
 pub(crate) struct Window {
-    pub(crate) size_x: u16,
-    pub(crate) size_y: u16
+    pub(crate) size_x: usize,
+    pub(crate) size_y: usize,
+    pub(crate) x_offset: usize,
+    pub(crate) y_offset: usize
 }
