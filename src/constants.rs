@@ -1,8 +1,15 @@
 use crossterm::event::*;
+use std::sync::Mutex;
 
-use crate::user_interact::CursorKeybinds;
+use crate::{user_interact::CursorKeybinds, Keybinds};
 
-pub(crate) const default_cursor_keybinds: CursorKeybinds = CursorKeybinds {
+pub(crate) static mut KEYBINDS: Mutex<Keybinds> = Mutex::new(DEFAULT_KEYBINDS);
+
+pub(crate) const DEFAULT_KEYBINDS: Keybinds = Keybinds {
+    CursorKeybinds: DEFAULT_CURSOR_KEYBINDS
+};
+
+pub(crate) const DEFAULT_CURSOR_KEYBINDS: CursorKeybinds = CursorKeybinds {
     MoveUp: KeyEvent {
         code: KeyCode::Up,
         modifiers: KeyModifiers::NONE,

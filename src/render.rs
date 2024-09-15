@@ -19,12 +19,14 @@ pub(crate) fn draw_line(data: &Vec<Vec<char>>, cursor: &Cursor) -> Result<bool, 
 }
 
 pub(crate) fn draw_screen(data: &Vec<Vec<char>>) -> Result<bool, std::io::Error> {
+    let _ = execute!(stdout(), MoveTo(0,0))?;
     for i in 0..data.len() {
         for j in &data[i] {
             let _ = write!(stdout(), "{}", j)?;
         }
-        let _ = write!(stdout(), "\n")?;
+        let _ = write!(stdout(), "\r\n")?;
     }
+    let _ = execute!(stdout(), MoveTo(0,0))?;
     let _ = stdout().flush()?;
     Ok(true)
 }
