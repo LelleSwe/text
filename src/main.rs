@@ -1,43 +1,43 @@
 use std::{io::{self, stdout}, sync::Mutex};
 use crossterm::{execute, queue, terminal::{disable_raw_mode, enable_raw_mode, SetSize, EnterAlternateScreen, LeaveAlternateScreen}};
 use crossterm::cursor::{Show, Hide};
+use crossterm::event::KeyEvent;
 use crate::file_interact::get_keybinds;
 use crate::user_interact::*;
 use crate::render::*;
-use crate::constants::KEYBINDS;
+use crate::constants::{KEYBINDS, WINDOW, DEFAULT_WINDOW};
 
 mod user_interact;
 mod render;
 mod constants;
 mod file_interact;
 
-fn setup() -> Result<(Cursor, Window), std::io::Error> {
+
+
+fn setup() -> Result<Cursor, std::io::Error> {
     //Get the keybinds for which the program uses
     //TODO: Replace "./foo.txt" with actual config file.
+    let mut window = DEFAULT_WINDOW;
     unsafe {
         KEYBINDS = Mutex::new(get_keybinds("./foo.txt"));
+        let window = WINDOW.lock().unwrap();
     }
 
     let _ = enable_raw_mode()?;
     let _ = execute!(stdout(), EnterAlternateScreen)?;
-    let cursor = Cursor {
+    let cursor: Cursor = Cursor {
         pos_x: 0,
         pos_y: 0
     };
-    let window = Window {
-        size_x: 120,
-        size_y: 30,
-        x_offset: 0,
-        y_offset: 0
-    };
+
 
     let _ = execute!(io::stdout(), SetSize(window.size_x.try_into().unwrap(), window.size_y.try_into().unwrap()))?;
     let _ = clear_screen()?;
-    Ok((cursor, window))
+    Ok(cursor)
 }
 
 fn main() -> io::Result<()> {
-    let Ok((mut cursor, window)) = setup()
+    let Ok(mut cursor) = setup()
     else {
         unimplemented!()
     };
@@ -50,12 +50,12 @@ fn main() -> io::Result<()> {
     let _ = draw_screen(&data);
     //execute!(io::stdout(), SetSize(cols, rows))?;
     loop {
-        let event:crossterm::event::KeyEvent = process_keypress();
-        let _ = draw_line(&data, &cursor);
+        let event: KeyEvent = process_keypress();
+        let _ = queue!(stdout(), Hide);
+        let _ = move_cursor(&mut cursor, event, &data);
+        let _ = update_data(&mut data, &mut cursor, &event);
         let _ = queue!(stdout(), Show);
-        let mut cursor = move_cursor(&mut cursor, event, &window, &data);
         let _ = update_cursor(&mut cursor);
-        let _ = queue!(stdout(), Hide);    
     }
     Ok(())
 }

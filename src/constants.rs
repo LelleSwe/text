@@ -1,9 +1,17 @@
 use crossterm::event::*;
+use crate::render::Window;
 use std::sync::Mutex;
 
 use crate::{user_interact::CursorKeybinds, Keybinds};
 
 pub(crate) static mut KEYBINDS: Mutex<Keybinds> = Mutex::new(DEFAULT_KEYBINDS);
+pub(crate) static mut WINDOW: Mutex<Window> = Mutex::new(DEFAULT_WINDOW);
+
+pub(crate) const DEFAULT_WINDOW: Window = Window {
+    size_x: 120,
+    size_y: 30,
+    x_offset: 0,
+    y_offset: 0};
 
 pub(crate) const DEFAULT_KEYBINDS: Keybinds = Keybinds {
     CursorKeybinds: DEFAULT_CURSOR_KEYBINDS

@@ -108,7 +108,7 @@ fn unformat_json(buf: String) -> String {
 pub(crate) fn get_keybinds(path: &str) -> Keybinds {
     let keybinds: Keybinds = match read_keybinds(path) {
         Ok(keybinds) => keybinds,
-        Err(keybinds) => {
+        Err(_) => {
             let _ = write_keybinds(path, DEFAULT_KEYBINDS);
             DEFAULT_KEYBINDS
         }
