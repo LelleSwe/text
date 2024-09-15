@@ -1,3 +1,6 @@
 /target
+/debug
+Cargo.lock
+
 foo.txt
 
