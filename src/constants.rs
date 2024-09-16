@@ -2,7 +2,7 @@ use crossterm::event::*;
 use crate::render::Window;
 use std::sync::Mutex;
 
-use crate::{user_interact::CursorKeybinds, Keybinds};
+use crate::{user_interact::{CursorKeybinds, UtilKeybinds}, Keybinds};
 
 pub(crate) static mut KEYBINDS: Mutex<Keybinds> = Mutex::new(DEFAULT_KEYBINDS);
 pub(crate) static mut WINDOW: Mutex<Window> = Mutex::new(DEFAULT_WINDOW);
@@ -14,7 +14,17 @@ pub(crate) const DEFAULT_WINDOW: Window = Window {
     y_offset: 0};
 
 pub(crate) const DEFAULT_KEYBINDS: Keybinds = Keybinds {
-    CursorKeybinds: DEFAULT_CURSOR_KEYBINDS
+    CursorKeybinds: DEFAULT_CURSOR_KEYBINDS,
+    UtilKeybinds: DEFAULT_UTIL_KEYBINDS
+};
+
+pub(crate) const DEFAULT_UTIL_KEYBINDS: UtilKeybinds = UtilKeybinds {
+    save_file: KeyEvent {
+        code: KeyCode::Char('s'),
+        modifiers: KeyModifiers::CONTROL,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE
+    }
 };
 
 pub(crate) const DEFAULT_CURSOR_KEYBINDS: CursorKeybinds = CursorKeybinds {

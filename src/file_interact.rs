@@ -1,8 +1,75 @@
+use crossterm::{cursor::MoveTo, event::{self, KeyEvent}, execute};
 use serde_json;
-use std::fs::File;
+use std::{fs::File, io::stdout};
 use std::io::prelude::*;
 
-use crate::{constants::DEFAULT_KEYBINDS, Keybinds};
+use crate::{constants::{DEFAULT_KEYBINDS, KEYBINDS, WINDOW}, Keybinds, Window};
+
+
+/// Reads the data from file.
+pub(crate) fn read_text_file(path: &str) -> Vec<Vec<char>> {
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(_) => panic!("Could not open text file for reading.")
+    };
+
+    //println!("wat?{}wat?", path);
+    let mut data: Vec<Vec<char>> = vec!(vec!());
+    let mut buf: String = "".to_string();
+    let _ = match file.read_to_string(&mut buf) {
+        Ok(_) => (),
+        Err(_) => panic!("Failed to read file to string")
+    };
+    let inter_data: Vec<char> = buf.chars().collect();
+    
+    let mut line_index: usize = 0;
+    for i in inter_data {
+        if i != '\n' {
+            data[line_index].push(i);
+
+        } else {
+            data.push(vec!());
+            line_index += 1;
+        }
+    };
+    data
+}
+
+
+pub(crate) fn check_save_file(path: &str, data: &Vec<Vec<char>>, event: &KeyEvent) {
+    unsafe {
+        //println!("{:#?}", event);
+        let save_code = KEYBINDS.lock().unwrap().UtilKeybinds.save_file;
+        //println!("{:#?}\n{:#?}", event, save_code);
+        if *event == save_code {
+            let _ = write_text_file(path, &data);
+
+            let window_size_y = WINDOW.lock().unwrap().size_y;
+            let _ = execute!(stdout(), MoveTo(0, window_size_y as u16 - 2)); 
+            println!("wrote to file");
+        }
+    }
+}
+
+/// Saves the data to file
+pub(crate) fn write_text_file(path: &str, data: &Vec<Vec<char>>) -> Result<(), std::io::Error> {
+    let mut file = match File::create(path) {
+        Ok(file) => file,
+        Err(_) => panic!("Could not open text file for writing.")
+    };
+
+    let mut out: String = "".to_string();
+    for i in data {
+        for j in i {
+            out += &j.to_string();
+        }
+        out += "\n"
+    }
+    let _ = out.pop();
+    file.write_all(&out.as_bytes())?;
+    
+    Ok(())
+}
 
 //TODO: Make CursorKeybinds generic when I learn how to
 pub(crate) fn write_keybinds(path: &str, keybinds: Keybinds) -> Result<(), std::io::Error>  {

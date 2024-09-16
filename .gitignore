@@ -2,5 +2,4 @@
 /debug
 Cargo.lock
 
-foo.txt
-
+*.txt

@@ -1,9 +1,10 @@
 use crossterm::{event::{self, *}, execute, terminal::{disable_raw_mode, LeaveAlternateScreen}};
+use core::str;
 use std::{sync::MutexGuard, time::Duration};
 use std::io::{stdout, Write};
 use serde::{Serialize, Deserialize};
 
-use crate::{clear_line, clear_screen, constants::{DEFAULT_CURSOR_KEYBINDS, DEFAULT_WINDOW, KEYBINDS, WINDOW}, draw_line, draw_screen, file_interact::get_keybinds};
+use crate::{clear_line, clear_screen, constants::{DEFAULT_CURSOR_KEYBINDS, DEFAULT_WINDOW, KEYBINDS, WINDOW}, draw_line, draw_screen, file_interact::{get_keybinds, write_text_file}};
 use crate::terminate_program;
 use crate::render::Window;
 
@@ -101,13 +102,15 @@ pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: KeyEvent, data: &Ve
 
 }
 
-pub(crate) fn process_keypress() -> KeyEvent {
+pub(crate) fn process_keypress(data: &mut Vec<Vec<char>>, cursor: &mut Cursor) -> KeyEvent {
     let event = read_key();
     let event = match event {
         Err(_error) => unimplemented!(),
         Ok(event) => event
     };
           
+    let code = event.code;
+
     match event {
         KeyEvent {
             code: KeyCode::Char('c'),
@@ -116,16 +119,15 @@ pub(crate) fn process_keypress() -> KeyEvent {
             state: KeyEventState::NONE
         } => terminate_program(),
         _ => {
-
         }
-    }
-    event
-}
 
-pub(crate) fn update_data(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, event: &KeyEvent) {
-    let code = event.code;
+    }
     match code {
         KeyCode::Char(code) => {
+            unsafe {
+                let save_file = KEYBINDS.lock().unwrap().UtilKeybinds.save_file;
+                if event == save_file {return event}
+            }
             insert_data(data, code, cursor);
         },
         KeyCode::Enter => {
@@ -136,6 +138,11 @@ pub(crate) fn update_data(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, event:
         },
         _ => ()
     };
+    event
+}
+
+pub(crate) fn update_data() {
+
 }
 
 pub(crate) fn remove_data(data: &mut Vec<Vec<char>>, amount: usize, cursor: &mut Cursor) {
@@ -200,7 +207,8 @@ pub(crate) fn split_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor) {
 /// Currently contains: CursorKeybinds
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub(crate) struct Keybinds {
-    pub(crate) CursorKeybinds: CursorKeybinds
+    pub(crate) CursorKeybinds: CursorKeybinds,
+    pub(crate) UtilKeybinds: UtilKeybinds
 }
 
 /// Struct containing 10 Crossterm KeyEvents for cursor behaviour.
@@ -219,3 +227,7 @@ pub(crate) struct CursorKeybinds {
     pub(crate) MoveWordRight: KeyEvent,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub(crate) struct UtilKeybinds {
+    pub(crate) save_file: KeyEvent
+}

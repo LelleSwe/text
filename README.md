@@ -1,4 +1,3 @@
-# Warn: Project not advanced enough to do *anything* yet
 # Name to be invented
 A Linux/Windows text editor.
 
