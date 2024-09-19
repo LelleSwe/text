@@ -1,7 +1,7 @@
 use crossterm::{execute, cursor::MoveTo, terminal::ClearType};
 use std::io::{stdout, Write};
 
-use crate::user_interact::Cursor;
+use crate::{constants::DEFAULT_WINDOW, user_interact::Cursor};
 
 pub(crate) fn update_cursor(cursor: &Cursor) -> Result<bool, std::io::Error> {
     let _ = execute!(stdout(), MoveTo(cursor.pos_x.try_into().unwrap(), cursor.pos_y.try_into().unwrap()))?;
@@ -19,7 +19,7 @@ pub(crate) fn draw_line(data: &Vec<Vec<char>>, cursor: &Cursor) -> Result<bool, 
 }
 
 pub(crate) fn draw_screen(data: &Vec<Vec<char>>) -> Result<bool, std::io::Error> {
-    let _ = execute!(stdout(), MoveTo(0,0))?;
+    let _ = execute!(stdout(), MoveTo(0, 0))?;
     for i in 0..data.len() {
         for j in &data[i] {
             let _ = write!(stdout(), "{}", j)?;

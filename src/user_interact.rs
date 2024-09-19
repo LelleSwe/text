@@ -1,10 +1,10 @@
 use crossterm::{event::{self, *}, execute, terminal::{disable_raw_mode, LeaveAlternateScreen}};
 use core::str;
-use std::{sync::MutexGuard, time::Duration};
+use std::time::Duration;
 use std::io::{stdout, Write};
 use serde::{Serialize, Deserialize};
 
-use crate::{clear_line, clear_screen, constants::{DEFAULT_CURSOR_KEYBINDS, DEFAULT_WINDOW, KEYBINDS, WINDOW}, draw_line, draw_screen, file_interact::{get_keybinds, write_text_file}};
+use crate::{clear_line, clear_screen, constants::{DEFAULT_CURSOR_KEYBINDS, DEFAULT_WINDOW}, draw_line, draw_screen, file_interact::{check_save_file, get_keybinds, write_text_file}};
 use crate::terminate_program;
 use crate::render::Window;
 
@@ -28,15 +28,11 @@ pub(crate) struct Cursor {
     pub(crate) pos_y: i16
 }
 
-pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: KeyEvent, data: &Vec<Vec<char>>) {
+pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: &KeyEvent, data: &Vec<Vec<char>>, keybinds: &Keybinds) {
+    let move_command = *move_command;
     let CursorKeybinds {mut MoveUp, mut MoveDown, mut MoveLeft, mut MoveRight, mut MoveLast, mut MoveFirst, mut MoveWordLeft, mut MoveWordRight, mut MovePageDown, mut MovePageUp }
-        = DEFAULT_CURSOR_KEYBINDS;
+        = keybinds.CursorKeybinds;
     let mut window = DEFAULT_WINDOW;
-    unsafe {
-        CursorKeybinds {MoveUp, MoveDown, MoveLeft, MoveRight, MoveLast, MoveFirst, MoveWordLeft, MoveWordRight, MovePageDown, MovePageUp} 
-            = KEYBINDS.lock().unwrap().CursorKeybinds;
-        window = *WINDOW.lock().unwrap();
-    }
     
     //Processing possible cursor movements
     if move_command == MoveDown {
@@ -102,76 +98,62 @@ pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: KeyEvent, data: &Ve
 
 }
 
-pub(crate) fn process_keypress(data: &mut Vec<Vec<char>>, cursor: &mut Cursor) -> KeyEvent {
-    let event = read_key();
-    let event = match event {
-        Err(_error) => unimplemented!(),
-        Ok(event) => event
-    };
-          
+pub(crate) fn process_keypress(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, event: &KeyEvent, keybinds: &Keybinds) {
+    let _ = move_cursor(cursor, event, &data, keybinds);
     let code = event.code;
+    let event = *event;
 
-    match event {
-        KeyEvent {
-            code: KeyCode::Char('c'),
-            modifiers: KeyModifiers::CONTROL,
-            kind: KeyEventKind::Press,
-            state: KeyEventState::NONE
-        } => terminate_program(),
-        _ => {
-        }
-
+    if event == keybinds.UtilKeybinds.terminate_program {
+        terminate_program();
+        return
     }
+    if event == keybinds.UtilKeybinds.save_file {return}
+
     match code {
         KeyCode::Char(code) => {
-            unsafe {
-                let save_file = KEYBINDS.lock().unwrap().UtilKeybinds.save_file;
-                if event == save_file {return event}
-            }
-            insert_data(data, code, cursor);
+            insert_data(data, code, cursor, keybinds);
         },
         KeyCode::Enter => {
-            split_line(data, cursor);
+            split_line(data, cursor, keybinds);
         },
         KeyCode::Backspace => {
-            remove_data(data, 1, cursor)
+            remove_data(data, 1, cursor, keybinds)
         },
         _ => ()
     };
-    event
 }
 
 pub(crate) fn update_data() {
 
 }
 
-pub(crate) fn remove_data(data: &mut Vec<Vec<char>>, amount: usize, cursor: &mut Cursor) {
+pub(crate) fn remove_data(data: &mut Vec<Vec<char>>, amount: usize, cursor: &mut Cursor, keybinds: &Keybinds) {
     for _ in 0..amount {
         if cursor.pos_x == 0 {
-            merge_line(data, cursor);
+            merge_line(data, cursor, keybinds);
             continue;
         }
         data[cursor.pos_y as usize].remove(cursor.pos_x as usize - 1);
         let _ = clear_line();
         let _ = draw_line(data, cursor);
-        let keybind = unsafe {KEYBINDS.lock().unwrap().CursorKeybinds.MoveLeft};
-        let _ = move_cursor(cursor, keybind, data);
+        let keybind = keybinds.CursorKeybinds.MoveLeft;
+        let _ = move_cursor(cursor, &keybind, data, keybinds);
         let _ = clear_line();
         let _ = draw_line(data, cursor);
     }
 }
 
-pub(crate) fn merge_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor) {
+pub(crate) fn merge_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, keybinds: &Keybinds) {
     if cursor.pos_y == 0 {return}
     let mut line = data[cursor.pos_y as usize].clone();
 
     //TODO: This temporary variable thing is super ugly, but it works for now.
-    let keybind = unsafe {KEYBINDS.lock().unwrap().CursorKeybinds.MoveLeft};
-    let _ = move_cursor(cursor, keybind, data);
+    let keybind = keybinds.CursorKeybinds.MoveLeft;
+    let _ = move_cursor(cursor, &keybind, data, keybinds);
     let tmp_x = cursor.pos_x;
     let tmp_y = cursor.pos_y;
-    let keybind = unsafe {KEYBINDS.lock().unwrap().CursorKeybinds.MoveRight};
-    let _ = move_cursor(cursor, keybind, data);
+    let keybind = keybinds.CursorKeybinds.MoveRight;
+    let _ = move_cursor(cursor, &keybind, data, keybinds);
 
     data.remove(cursor.pos_y as usize);
     data[cursor.pos_y as usize - 1].append(&mut line);
@@ -182,22 +164,22 @@ pub(crate) fn merge_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor) {
     let _ = draw_screen(data);
 }
 
-pub(crate) fn insert_data(data: &mut Vec<Vec<char>>, insert: char, cursor: &mut Cursor) {
+pub(crate) fn insert_data(data: &mut Vec<Vec<char>>, insert: char, cursor: &mut Cursor, keybinds: &Keybinds) {
     data[cursor.pos_y as usize].insert(cursor.pos_x as usize, insert);
-    let keybind = unsafe {KEYBINDS.lock().unwrap().CursorKeybinds.MoveRight};
-    let _ = move_cursor(cursor, keybind, data);
+    let keybind = keybinds.CursorKeybinds.MoveRight;
+    let _ = move_cursor(cursor, &keybind, data, keybinds);
     let _ = clear_line();
     let _ = draw_line(data, cursor);
 }
 
-pub(crate) fn split_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor) {
+pub(crate) fn split_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, keybinds: &Keybinds) {
     let mut data2 = data.clone();
     let (line1, line2) = data2[cursor.pos_y as usize].split_at_mut(cursor.pos_x as usize);
     data[cursor.pos_y as usize] = line1.to_vec();
     data.insert(cursor.pos_y as usize + 1, line2.to_vec());
 
-    let keybind = unsafe {KEYBINDS.lock().unwrap().CursorKeybinds.MoveDown};
-    let _ = move_cursor(cursor, keybind, data);
+    let keybind = keybinds.CursorKeybinds.MoveDown;
+    let _ = move_cursor(cursor, &keybind, data, keybinds);
     cursor.pos_x = 0;
     let _ = clear_screen();
     let _ = draw_screen(data);
@@ -229,5 +211,6 @@ pub(crate) struct CursorKeybinds {
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub(crate) struct UtilKeybinds {
-    pub(crate) save_file: KeyEvent
+    pub(crate) save_file: KeyEvent,
+    pub(crate) terminate_program: KeyEvent
 }

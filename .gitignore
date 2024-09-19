@@ -1,5 +1,6 @@
 /target
 /debug
 Cargo.lock
+.vscode
 
 *.txt

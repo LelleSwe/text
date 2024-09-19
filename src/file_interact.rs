@@ -1,9 +1,9 @@
-use crossterm::{cursor::MoveTo, event::{self, KeyEvent}, execute};
+use crossterm::{cursor::MoveTo, event::KeyEvent, execute};
 use serde_json;
 use std::{fs::File, io::stdout};
 use std::io::prelude::*;
 
-use crate::{constants::{DEFAULT_KEYBINDS, KEYBINDS, WINDOW}, Keybinds, Window};
+use crate::{constants::DEFAULT_KEYBINDS, Keybinds};
 
 
 /// Reads the data from file.
@@ -36,18 +36,11 @@ pub(crate) fn read_text_file(path: &str) -> Vec<Vec<char>> {
 }
 
 
-pub(crate) fn check_save_file(path: &str, data: &Vec<Vec<char>>, event: &KeyEvent) {
-    unsafe {
-        //println!("{:#?}", event);
-        let save_code = KEYBINDS.lock().unwrap().UtilKeybinds.save_file;
-        //println!("{:#?}\n{:#?}", event, save_code);
-        if *event == save_code {
-            let _ = write_text_file(path, &data);
-
-            let window_size_y = WINDOW.lock().unwrap().size_y;
-            let _ = execute!(stdout(), MoveTo(0, window_size_y as u16 - 2)); 
-            println!("wrote to file");
-        }
+pub(crate) fn check_save_file(path: &str, data: &Vec<Vec<char>>, event: &KeyEvent, keybinds: &Keybinds) {
+    if *event == keybinds.UtilKeybinds.save_file {
+        let _ = write_text_file(path, &data);
+        let _ = execute!(stdout(), MoveTo(0, 28)); 
+        println!("wrote to file");
     }
 }
 
