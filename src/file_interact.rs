@@ -3,6 +3,7 @@ use serde_json;
 use std::{fs::File, io::stdout};
 use std::io::prelude::*;
 
+use crate::{draw_line, Window};
 use crate::{constants::DEFAULT_KEYBINDS, Keybinds};
 
 
@@ -36,12 +37,13 @@ pub(crate) fn read_text_file(path: &str) -> Vec<Vec<char>> {
 }
 
 
-pub(crate) fn check_save_file(path: &str, data: &Vec<Vec<char>>, event: &KeyEvent, keybinds: &Keybinds) {
+pub(crate) fn check_save_file(path: &str, data: &Vec<Vec<char>>, event: &KeyEvent, keybinds: &Keybinds) -> Option<String> {
     if *event == keybinds.UtilKeybinds.save_file {
         let _ = write_text_file(path, &data);
-        let _ = execute!(stdout(), MoveTo(0, 28)); 
-        println!("wrote to file");
+        let printed: String = format!("Saved to file {}", path);
+        return Some(printed)
     }
+    None
 }
 
 /// Saves the data to file
@@ -115,7 +117,7 @@ fn format_json(buf: String) -> String {
             continue
         }
         if i == ':' {
-            out += " : ";
+            out += ": ";
             continue
         }
         if i == ',' {

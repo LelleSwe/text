@@ -18,7 +18,7 @@ mod file_interact;
 
 
 
-fn setup() -> Result<(Cursor, Keybinds), std::io::Error> {
+fn setup() -> Result<(Cursor, Keybinds, Window), std::io::Error> {
     //Get the keybinds for which the program uses
     //TODO: Replace "./foo.txt" with actual config file.
     let mut window = DEFAULT_WINDOW;
@@ -34,10 +34,15 @@ fn setup() -> Result<(Cursor, Keybinds), std::io::Error> {
 
     let _ = execute!(io::stdout(), SetSize(window.size_x.try_into().unwrap(), window.size_y.try_into().unwrap()))?;
     let _ = clear_screen()?;
-    Ok((cursor, keybinds))
+    Ok((cursor, keybinds, window))
 }
 
 fn main() -> io::Result<()> {
+    //Forces the program to run terminate_program()
+    //on shutdown through the Drop trait.
+    //Stops raw mode escaping the program.
+    let _proper_term = terminate;
+    
     let args: Vec<String> = env::args().collect();
     let mut data: Vec<Vec<char>> = vec!(vec!()); 
     let mut path: &str = "";
@@ -50,29 +55,50 @@ fn main() -> io::Result<()> {
         data = read_text_file(&path);
     }
     
-    let Ok((mut cursor, keybinds)) = setup()
+    let Ok((mut cursor, keybinds, mut window)) = setup()
     else {
         unimplemented!()
     };
 
-    let _ = draw_screen(&data);
+    let _ = draw_screen(&data, &cursor, &mut window);
     //execute!(io::stdout(), SetSize(cols, rows))?;
+
+    //Main runtime loop.
     loop {
         let event = read_key();
         let event = match event {
             Err(_error) => unimplemented!(),
             Ok(event) => event
         };
-
+        //TODO: Come up with better name for to_print.
+        //It prints at the last line of the terminal,
+        //so like output for various commands.
+        let mut to_print: String = "".to_string();
+        
         let _ = process_keypress(&mut data, &mut cursor, &event, &keybinds);
-        let _ = check_save_file(path, &data, &event, &keybinds);
+        let t = check_save_file(path, &data, &event, &keybinds);
+        to_print = match t {
+            Some(t) => t,
+            None => "".to_string()
+        };
 
         let _ = queue!(stdout(), Hide);
+        let _ = clear_screen();
+        let _ = draw_screen(&data, &cursor, &mut window);
 
+        let _ = draw_line((2, window.size_y as u16), &to_print);
         let _ = queue!(stdout(), Show);
-        let _ = update_cursor(&mut cursor);
+        let _ = update_cursor(&mut cursor, &window);
     }
     Ok(())
+}
+
+struct terminate;
+
+impl Drop for terminate {
+    fn drop(&mut self) {
+        let _ = terminate_program();
+    }
 }
 
 pub(crate) fn terminate_program() {

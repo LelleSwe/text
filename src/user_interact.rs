@@ -4,9 +4,8 @@ use std::time::Duration;
 use std::io::{stdout, Write};
 use serde::{Serialize, Deserialize};
 
-use crate::{clear_line, clear_screen, constants::{DEFAULT_CURSOR_KEYBINDS, DEFAULT_WINDOW}, draw_line, draw_screen, file_interact::{check_save_file, get_keybinds, write_text_file}};
+use crate::{constants::{DEFAULT_CURSOR_KEYBINDS, DEFAULT_WINDOW}, file_interact::{check_save_file, get_keybinds, write_text_file}};
 use crate::terminate_program;
-use crate::render::Window;
 
 /// Uses crossterm::event::read()? to search for a key,
 /// or returns after 0.5 seconds if no key is pressed.
@@ -32,7 +31,6 @@ pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: &KeyEvent, data: &V
     let move_command = *move_command;
     let CursorKeybinds {mut MoveUp, mut MoveDown, mut MoveLeft, mut MoveRight, mut MoveLast, mut MoveFirst, mut MoveWordLeft, mut MoveWordRight, mut MovePageDown, mut MovePageUp }
         = keybinds.CursorKeybinds;
-    let mut window = DEFAULT_WINDOW;
     
     //Processing possible cursor movements
     if move_command == MoveDown {
@@ -66,12 +64,12 @@ pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: &KeyEvent, data: &V
     if move_command == MovePageUp {cursor.pos_y -= 15;}
 
     //Bounding cursor locations (e.g. can't go outside the screen)
-    if cursor.pos_y >= window.size_y as i16 {
+    /*if cursor.pos_y >= window.size_y as i16 {
         cursor.pos_y = (window.size_y - 1) as i16;
     }
     if cursor.pos_x >= window.size_x as i16 {
         cursor.pos_x = (window.size_x - 1) as i16
-    }
+    }*/
     if cursor.pos_y < 0 {cursor.pos_y = 0;}
     if cursor.pos_x < 0 {
         if cursor.pos_y == 0 {
@@ -134,12 +132,8 @@ pub(crate) fn remove_data(data: &mut Vec<Vec<char>>, amount: usize, cursor: &mut
             continue;
         }
         data[cursor.pos_y as usize].remove(cursor.pos_x as usize - 1);
-        let _ = clear_line();
-        let _ = draw_line(data, cursor);
         let keybind = keybinds.CursorKeybinds.MoveLeft;
         let _ = move_cursor(cursor, &keybind, data, keybinds);
-        let _ = clear_line();
-        let _ = draw_line(data, cursor);
     }
 }
 
@@ -159,17 +153,12 @@ pub(crate) fn merge_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, keybind
     data[cursor.pos_y as usize - 1].append(&mut line);
     cursor.pos_x = tmp_x;
     cursor.pos_y = tmp_y;
-    
-    let _ = clear_screen();
-    let _ = draw_screen(data);
 }
 
 pub(crate) fn insert_data(data: &mut Vec<Vec<char>>, insert: char, cursor: &mut Cursor, keybinds: &Keybinds) {
     data[cursor.pos_y as usize].insert(cursor.pos_x as usize, insert);
     let keybind = keybinds.CursorKeybinds.MoveRight;
     let _ = move_cursor(cursor, &keybind, data, keybinds);
-    let _ = clear_line();
-    let _ = draw_line(data, cursor);
 }
 
 pub(crate) fn split_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, keybinds: &Keybinds) {
@@ -181,8 +170,6 @@ pub(crate) fn split_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, keybind
     let keybind = keybinds.CursorKeybinds.MoveDown;
     let _ = move_cursor(cursor, &keybind, data, keybinds);
     cursor.pos_x = 0;
-    let _ = clear_screen();
-    let _ = draw_screen(data);
 }
 
 /// Struct containing *all* keybinds for various default actions.
