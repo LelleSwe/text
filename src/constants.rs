@@ -1,6 +1,7 @@
 use crossterm::event::*;
 use crate::render::Window;
 
+use crate::DataInteractKeybinds;
 use crate::{user_interact::{CursorKeybinds, UtilKeybinds}, Keybinds};
 
 pub(crate) const DEFAULT_WINDOW: Window = Window {
@@ -11,7 +12,33 @@ pub(crate) const DEFAULT_WINDOW: Window = Window {
 
 pub(crate) const DEFAULT_KEYBINDS: Keybinds = Keybinds {
     CursorKeybinds: DEFAULT_CURSOR_KEYBINDS,
-    UtilKeybinds: DEFAULT_UTIL_KEYBINDS
+    UtilKeybinds: DEFAULT_UTIL_KEYBINDS,
+    DataInteractKeybinds: DEFAULT_DATA_INTERACT_KEYBINDS
+};
+
+pub(crate) const DEFAULT_DATA_INTERACT_KEYBINDS: DataInteractKeybinds = DataInteractKeybinds {
+    remove_before: KeyEvent {
+        code: KeyCode::Backspace,
+        modifiers: KeyModifiers::NONE,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE
+
+    },
+    remove_after: KeyEvent {
+        code: KeyCode::Delete,
+        modifiers: KeyModifiers::NONE,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE
+
+    },
+    new_line: KeyEvent {
+        code: KeyCode::Enter,
+        modifiers: KeyModifiers::NONE,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE
+
+    },
+    
 };
 
 pub(crate) const DEFAULT_UTIL_KEYBINDS: UtilKeybinds = UtilKeybinds {

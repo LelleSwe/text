@@ -1,4 +1,4 @@
-use crossterm::{cursor::{self, MoveTo}, execute, terminal::ClearType};
+use crossterm::{cursor::MoveTo, execute, terminal::ClearType};
 use std::{cmp, io::{stdout, Write}};
 
 use crate::user_interact::Cursor;
@@ -58,7 +58,6 @@ pub(crate) fn draw_line(location: (u16, u16), data: &str) -> Result<(), std::io:
     let _ = execute!(stdout(), MoveTo(location.0, location.1))?;
 
     let _ = write!(stdout(), "{}", data)?;
-    let _ = execute!(stdout(), MoveTo(0,0))?;
     let _ = stdout().flush()?;
     Ok(())
 }

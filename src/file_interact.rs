@@ -1,10 +1,9 @@
-use crossterm::{cursor::MoveTo, event::KeyEvent, execute};
+use crossterm::event::KeyEvent;
 use serde_json;
-use std::{fs::File, io::stdout};
+use std::fs::File;
 use std::io::prelude::*;
 
-use crate::{draw_line, Window};
-use crate::{constants::DEFAULT_KEYBINDS, Keybinds};
+use crate::{constants::DEFAULT_KEYBINDS, user_prompt::user_prompt, Cursor, Keybinds, Window};
 
 
 /// Reads the data from file.
@@ -37,9 +36,17 @@ pub(crate) fn read_text_file(path: &str) -> Vec<Vec<char>> {
 }
 
 
-pub(crate) fn check_save_file(path: &str, data: &Vec<Vec<char>>, event: &KeyEvent, keybinds: &Keybinds) -> Option<String> {
+pub(crate) fn check_save_file(path: &mut String, data: &Vec<Vec<char>>, event: &KeyEvent, keybinds: &Keybinds, window: &Window) -> Option<String> {
     if *event == keybinds.UtilKeybinds.save_file {
-        let _ = write_text_file(path, &data);
+        if path == "" {
+            let prompt = "Input file to save to: ".to_string();
+            let vec = user_prompt(&prompt, window, (0, window.size_y as u16), keybinds);
+            for i in vec {
+                path.push(i);
+            }
+        }
+
+        let _ = write_text_file(&path, &data);
         let printed: String = format!("Saved to file {}", path);
         return Some(printed)
     }

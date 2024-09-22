@@ -1,10 +1,8 @@
-use crossterm::{event::{self, *}, execute, terminal::{disable_raw_mode, LeaveAlternateScreen}};
+use crossterm::event::*;
 use core::str;
 use std::time::Duration;
-use std::io::{stdout, Write};
 use serde::{Serialize, Deserialize};
 
-use crate::{constants::{DEFAULT_CURSOR_KEYBINDS, DEFAULT_WINDOW}, file_interact::{check_save_file, get_keybinds, write_text_file}};
 use crate::terminate_program;
 
 /// Uses crossterm::event::read()? to search for a key,
@@ -13,7 +11,7 @@ pub(crate) fn read_key() -> Result<KeyEvent, std::io::Error> {
     loop {
         if poll(Duration::from_millis(500))? {
             if let Event::Key(event) = crossterm::event::read()? {
-                    return Ok::<crossterm::event::KeyEvent, std::io::Error>(event);
+                    return Ok(event);
             };
         }
     }
@@ -63,13 +61,6 @@ pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: &KeyEvent, data: &V
     if move_command == MovePageDown {cursor.pos_y += 15;}
     if move_command == MovePageUp {cursor.pos_y -= 15;}
 
-    //Bounding cursor locations (e.g. can't go outside the screen)
-    /*if cursor.pos_y >= window.size_y as i16 {
-        cursor.pos_y = (window.size_y - 1) as i16;
-    }
-    if cursor.pos_x >= window.size_x as i16 {
-        cursor.pos_x = (window.size_x - 1) as i16
-    }*/
     if cursor.pos_y < 0 {cursor.pos_y = 0;}
     if cursor.pos_x < 0 {
         if cursor.pos_y == 0 {
@@ -121,10 +112,6 @@ pub(crate) fn process_keypress(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, e
     };
 }
 
-pub(crate) fn update_data() {
-
-}
-
 pub(crate) fn remove_data(data: &mut Vec<Vec<char>>, amount: usize, cursor: &mut Cursor, keybinds: &Keybinds) {
     for _ in 0..amount {
         if cursor.pos_x == 0 {
@@ -172,12 +159,13 @@ pub(crate) fn split_line(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, keybind
     cursor.pos_x = 0;
 }
 
+
 /// Struct containing *all* keybinds for various default actions.
-/// Currently contains: CursorKeybinds
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub(crate) struct Keybinds {
     pub(crate) CursorKeybinds: CursorKeybinds,
-    pub(crate) UtilKeybinds: UtilKeybinds
+    pub(crate) UtilKeybinds: UtilKeybinds,
+    pub(crate) DataInteractKeybinds: DataInteractKeybinds
 }
 
 /// Struct containing 10 Crossterm KeyEvents for cursor behaviour.
@@ -200,4 +188,11 @@ pub(crate) struct CursorKeybinds {
 pub(crate) struct UtilKeybinds {
     pub(crate) save_file: KeyEvent,
     pub(crate) terminate_program: KeyEvent
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub(crate) struct DataInteractKeybinds {
+    pub(crate) remove_before: KeyEvent,
+    pub(crate) remove_after: KeyEvent,
+    pub(crate) new_line: KeyEvent
 }

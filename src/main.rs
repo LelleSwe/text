@@ -15,6 +15,7 @@ mod user_interact;
 mod render;
 mod constants;
 mod file_interact;
+mod user_prompt;
 
 
 
@@ -40,34 +41,36 @@ fn setup() -> Result<(Cursor, Keybinds, Window), std::io::Error> {
 fn main() -> io::Result<()> {
     //Forces the program to run terminate_program()
     //on shutdown through the Drop trait.
-    //Stops raw mode escaping the program.
+    //Mainly to stop raw mode escaping into the terminal on crash.
     let _proper_term = terminate;
     
+    //Preparing the command line args, data to be edited and save file.
     let args: Vec<String> = env::args().collect();
     let mut data: Vec<Vec<char>> = vec!(vec!()); 
-    let mut path: &str = "";
+    let mut path: String = "".to_string();
     //length is 1 since the command used to run the program also counts.
     if args.len() > 2 {
         println!("Enter one file to open!\n(Command line argument.)");
         return Ok(())
     } else if args.len() == 2 {
-        path = &args[1];
+        path = args[1].to_string();
         data = read_text_file(&path);
     }
     
+    //Create the cursor, keybinds and window.
     let Ok((mut cursor, keybinds, mut window)) = setup()
     else {
         unimplemented!()
     };
 
+    //Initial screen draw.
     let _ = draw_screen(&data, &cursor, &mut window);
-    //execute!(io::stdout(), SetSize(cols, rows))?;
 
     //Main runtime loop.
     loop {
-        let event = read_key();
-        let event = match event {
-            Err(_error) => unimplemented!(),
+        let event: Result<KeyEvent, io::Error> = read_key();
+        let event: KeyEvent = match event {
+            Err(_) => unimplemented!(),
             Ok(event) => event
         };
         //TODO: Come up with better name for to_print.
@@ -76,17 +79,17 @@ fn main() -> io::Result<()> {
         let mut to_print: String = "".to_string();
         
         let _ = process_keypress(&mut data, &mut cursor, &event, &keybinds);
-        let t = check_save_file(path, &data, &event, &keybinds);
+        let t = check_save_file(&mut path, &data, &event, &keybinds, &window);
         to_print = match t {
             Some(t) => t,
-            None => "".to_string()
+            None => to_print
         };
 
         let _ = queue!(stdout(), Hide);
         let _ = clear_screen();
         let _ = draw_screen(&data, &cursor, &mut window);
 
-        let _ = draw_line((2, window.size_y as u16), &to_print);
+        let _ = draw_line((0, window.size_y as u16), &to_print);
         let _ = queue!(stdout(), Show);
         let _ = update_cursor(&mut cursor, &window);
     }
@@ -107,5 +110,5 @@ pub(crate) fn terminate_program() {
     let _ = execute!(stdout(), LeaveAlternateScreen);
     let _ = disable_raw_mode();
     let _ = println!("Shutting down program.");
-    std::process::exit(1);
+    std::process::exit(0);
 }
