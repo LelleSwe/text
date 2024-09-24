@@ -1,10 +1,11 @@
 use std::io::{self, stdout};
 use std::env;
 
-use crossterm::{execute, queue, terminal::{disable_raw_mode, enable_raw_mode, SetSize, EnterAlternateScreen, LeaveAlternateScreen}};
+use constants::{DEFAULT_CONFIG, DEFAULT_FUNNY_CONFIG, DEFAULT_KEYBINDS};
+use crossterm::{execute, queue, terminal::{disable_raw_mode, enable_raw_mode, SetSize, EnterAlternateScreen, LeaveAlternateScreen, SetTitle}};
 use crossterm::cursor::{Show, Hide};
 use crossterm::event::KeyEvent;
-use file_interact::{check_save_file, read_text_file};
+use file_interact::{check_save_file, get_configs, read_text_file, Config, FunnyConfig};
 
 use crate::file_interact::get_keybinds;
 use crate::user_interact::*;
@@ -25,13 +26,13 @@ fn setup() -> Result<(Cursor, Keybinds, Window), std::io::Error> {
     let mut window = DEFAULT_WINDOW;
     let keybinds = get_keybinds("./foo.txt");
 
-    let _ = execute!(stdout(), EnterAlternateScreen)?;
+    //SetTitle doesn't seem to work?
+    let _ = queue!(stdout(), EnterAlternateScreen, SetTitle("LElle momento editor"))?;
     let _ = enable_raw_mode()?;
     let cursor: Cursor = Cursor {
         pos_x: 0,
         pos_y: 0
     };
-
 
     let _ = execute!(io::stdout(), SetSize(window.size_x.try_into().unwrap(), window.size_y.try_into().unwrap()))?;
     let _ = clear_screen()?;
@@ -56,6 +57,7 @@ fn main() -> io::Result<()> {
         path = args[1].to_string();
         data = read_text_file(&path);
     }
+    let configs: Config = get_configs("the_funny.txt");
     
     //Create the cursor, keybinds and window.
     let Ok((mut cursor, keybinds, mut window)) = setup()
@@ -64,7 +66,7 @@ fn main() -> io::Result<()> {
     };
 
     //Initial screen draw.
-    let _ = draw_screen(&data, &cursor, &mut window);
+    let _ = draw_screen(&data, &cursor, &mut window, &configs);
 
     //Main runtime loop.
     loop {
@@ -87,11 +89,11 @@ fn main() -> io::Result<()> {
 
         let _ = queue!(stdout(), Hide);
         let _ = clear_screen();
-        let _ = draw_screen(&data, &cursor, &mut window);
+        let _ = draw_screen(&data, &cursor, &mut window, &configs);
 
         let _ = draw_line((0, window.size_y as u16), &to_print);
         let _ = queue!(stdout(), Show);
-        let _ = update_cursor(&mut cursor, &window);
+        let _ = update_cursor(&mut cursor, &window, &configs);
     }
     Ok(())
 }

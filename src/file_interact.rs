@@ -1,9 +1,10 @@
 use crossterm::event::KeyEvent;
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
 use std::io::prelude::*;
 
-use crate::{constants::DEFAULT_KEYBINDS, user_prompt::user_prompt, Cursor, Keybinds, Window};
+use crate::{constants::{DEFAULT_CONFIG, DEFAULT_KEYBINDS}, user_prompt::user_prompt, Cursor, Keybinds, Window};
 
 
 /// Reads the data from file.
@@ -73,21 +74,20 @@ pub(crate) fn write_text_file(path: &str, data: &Vec<Vec<char>>) -> Result<(), s
     Ok(())
 }
 
-//TODO: Make CursorKeybinds generic when I learn how to
-pub(crate) fn write_keybinds(path: &str, keybinds: Keybinds) -> Result<(), std::io::Error>  {
+pub(crate) fn write_configs<T: serde::Serialize>(path: &str, keybinds: T) -> Result<(), std::io::Error>  {
     let mut file = File::create(path)?;
     let buf: String = format_json(serde_json::to_string(&keybinds).unwrap());
     file.write_all(&buf.as_bytes())?;
     Ok(())  
 } 
 
-//TODO: Make CursorKeybinds generic when I learn how to
-pub(crate) fn read_keybinds(path: &str) -> Result<Keybinds, std::io::Error>  {
+pub(crate) fn read_configs<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, std::io::Error>  {
     let mut file: File = File::open(path)?;
     let mut buf: String = "".to_string();
     let _ = file.read_to_string(&mut buf)?;
     let buf: String = unformat_json(buf);
-    let out: Keybinds = serde_json::from_str(&buf)?;
+    
+    let out: T = serde_json::from_str(&buf)?;
     Ok(out)
 }
 
@@ -175,12 +175,37 @@ fn unformat_json(buf: String) -> String {
 ///     and defaults are written to file.
 ///     If writing fails, nothing happens.
 pub(crate) fn get_keybinds(path: &str) -> Keybinds {
-    let keybinds: Keybinds = match read_keybinds(path) {
+    //TODO: Figure out bette way to resolve the file path thing
+    let keybinds: Keybinds = match read_configs(&format!("/home/lelle/Documents/Rust/text/{}", path)) {
         Ok(keybinds) => keybinds,
         Err(_) => {
-            let _ = write_keybinds(path, DEFAULT_KEYBINDS);
+            let _ = write_configs(&format!("/home/lelle/Documents/Rust/text/{}", path), DEFAULT_KEYBINDS);
             DEFAULT_KEYBINDS
         }
     };
     keybinds
+}
+
+pub(crate) fn get_configs(path: &str) -> Config {
+    //TODO: Figure out bette way to resolve the file path thing
+    let configs: Config = match read_configs(&format!("/home/lelle/Documents/Rust/text/{}", path)) {
+        Ok(configs) => configs,
+        Err(_) => {
+            let _ = write_configs(&format!("/home/lelle/Documents/Rust/text/{}", path), DEFAULT_CONFIG);
+            DEFAULT_CONFIG
+        }
+    };
+    configs
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub(crate) struct FunnyConfig {
+    //doesn't work currently
+    pub(crate) wave_render: bool,
+    pub(crate) wiggle_render: bool
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub(crate) struct Config {
+    pub(crate) funny_config: FunnyConfig
 }

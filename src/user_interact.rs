@@ -9,11 +9,18 @@ use crate::terminate_program;
 /// or returns after 0.5 seconds if no key is pressed.
 pub(crate) fn read_key() -> Result<KeyEvent, std::io::Error> {
     loop {
-        if poll(Duration::from_millis(500))? {
+        if poll(Duration::from_millis(16))? {
             if let Event::Key(event) = crossterm::event::read()? {
                     return Ok(event);
             };
-        }
+        }  else {
+            return Ok(KeyEvent {
+                code: KeyCode::Null,
+                modifiers: KeyModifiers::NONE,
+                kind: KeyEventKind::Press,
+                state: KeyEventState::NONE
+            }
+        )}
     }
 }
 
@@ -27,7 +34,7 @@ pub(crate) struct Cursor {
 
 pub(crate) fn move_cursor(cursor: &mut Cursor, move_command: &KeyEvent, data: &Vec<Vec<char>>, keybinds: &Keybinds) {
     let move_command = *move_command;
-    let CursorKeybinds {mut MoveUp, mut MoveDown, mut MoveLeft, mut MoveRight, mut MoveLast, mut MoveFirst, mut MoveWordLeft, mut MoveWordRight, mut MovePageDown, mut MovePageUp }
+    let CursorKeybinds {MoveUp, MoveDown, MoveLeft, MoveRight, MoveLast, MoveFirst, MoveWordLeft, MoveWordRight, MovePageDown, MovePageUp}
         = keybinds.CursorKeybinds;
     
     //Processing possible cursor movements
@@ -97,22 +104,40 @@ pub(crate) fn process_keypress(data: &mut Vec<Vec<char>>, cursor: &mut Cursor, e
         return
     }
     if event == keybinds.UtilKeybinds.save_file {return}
+    if event == keybinds.DataInteractKeybinds.remove_before {
+        remove_data_before(data, 1, cursor, keybinds);
+    }
+    if event == keybinds.DataInteractKeybinds.remove_after {
+        remove_data_after(data, 1, cursor, keybinds);
+    }
+    if event == keybinds.DataInteractKeybinds.new_line {
+        split_line(data, cursor, keybinds);
+    }
 
     match code {
         KeyCode::Char(code) => {
             insert_data(data, code, cursor, keybinds);
         },
-        KeyCode::Enter => {
-            split_line(data, cursor, keybinds);
-        },
-        KeyCode::Backspace => {
-            remove_data(data, 1, cursor, keybinds)
-        },
         _ => ()
     };
 }
 
-pub(crate) fn remove_data(data: &mut Vec<Vec<char>>, amount: usize, cursor: &mut Cursor, keybinds: &Keybinds) {
+pub(crate) fn remove_data_after(data: &mut Vec<Vec<char>>, amount: usize, cursor: &mut Cursor, keybinds: &Keybinds) {
+    for _ in 0..amount {
+        if cursor.pos_x == data[cursor.pos_y as usize].len() as i16 {
+            if cursor.pos_y == data.len() as i16 - 1 {
+                continue;
+            }
+            let _ = move_cursor(cursor, &keybinds.CursorKeybinds.MoveRight, data, keybinds);
+            merge_line(data, cursor, keybinds);
+            continue;
+        }
+
+        let _ = data[cursor.pos_y as usize].remove(cursor.pos_x as usize);        
+    }
+}
+
+pub(crate) fn remove_data_before(data: &mut Vec<Vec<char>>, amount: usize, cursor: &mut Cursor, keybinds: &Keybinds) {
     for _ in 0..amount {
         if cursor.pos_x == 0 {
             merge_line(data, cursor, keybinds);

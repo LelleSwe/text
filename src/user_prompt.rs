@@ -1,10 +1,11 @@
 use std::io::{stdout, Write};
 
 use crossterm::cursor::MoveTo;
-use crossterm::event::{self, *};
+use crossterm::event::*;
 use crossterm::{execute, queue};
 use crossterm::terminal::ClearType;
 
+use crate::constants::DEFAULT_CONFIG;
 use crate::{draw_line, terminate_program, update_cursor, Window};
 use crate::user_interact::{Cursor,read_key, Keybinds};
 
@@ -33,7 +34,7 @@ pub(crate) fn user_prompt(data: &str, window: &Window, (pos_x, pos_y): (u16, u16
         }
 
         let _ = single_line_process_keypress(&mut g, window, &mut cursor, &event, keybinds);
-        let _ = update_cursor(&cursor, window);
+        let _ = update_cursor(&cursor, window, &DEFAULT_CONFIG);
         let _ = draw_data(&g, (pos_x + print_offset as u16, pos_y));
         let _ = draw_line((pos_x, pos_y), &data);
         let _ = match execute!(stdout(), MoveTo(cursor.pos_x as u16 + print_offset as u16, pos_y)) {

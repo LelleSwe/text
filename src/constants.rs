@@ -1,4 +1,5 @@
 use crossterm::event::*;
+use crate::file_interact::{Config, FunnyConfig};
 use crate::render::Window;
 
 use crate::DataInteractKeybinds;
@@ -117,4 +118,15 @@ pub(crate) const DEFAULT_CURSOR_KEYBINDS: CursorKeybinds = CursorKeybinds {
         kind: KeyEventKind::Press,
         state: KeyEventState::NONE
     },
+};
+
+pub(crate) const DEFAULT_FUNNY_CONFIG: FunnyConfig = FunnyConfig {
+    //wave_render currently isn't implemented
+    wave_render: false,
+    wiggle_render: false
+};
+
+
+pub(crate) const DEFAULT_CONFIG: Config = Config {
+    funny_config: DEFAULT_FUNNY_CONFIG
 };

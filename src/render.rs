@@ -1,10 +1,21 @@
 use crossterm::{cursor::MoveTo, execute, terminal::ClearType};
 use std::{cmp, io::{stdout, Write}};
+use std::time::SystemTime;
 
-use crate::user_interact::Cursor;
+use crate::{file_interact::Config, user_interact::Cursor};
 
-pub(crate) fn update_cursor(cursor: &Cursor, window: &Window) -> Result<bool, std::io::Error> {
-    let _ = execute!(stdout(), MoveTo(cursor.pos_x as u16 - window.x_offset as u16, cursor.pos_y as u16 - window.y_offset as u16))?;
+pub(crate) fn update_cursor(cursor: &Cursor, window: &Window, configs: &Config) -> Result<bool, std::io::Error> {
+    if !configs.funny_config.wiggle_render {
+        let _ = execute!(stdout(), 
+        MoveTo(cursor.pos_x as u16 - window.x_offset as u16, cursor.pos_y as u16 - window.y_offset as u16
+        ))?;
+    } else {
+        let x_offset = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as f64;
+        let x_offset = (5.0 * (f64::sin(x_offset/125.0) + 1.1)) as u16;
+        let _ = execute!(stdout(), 
+        MoveTo(cursor.pos_x as u16 - window.x_offset as u16 + x_offset, cursor.pos_y as u16 - window.y_offset as u16
+        ))?;
+    }
     Ok(true)
 }
 
@@ -29,18 +40,25 @@ fn cursor_inside_window(cursor: &Cursor, window: &mut Window) {
 } 
 
 //TODO: Fix word wrapping bugs.
-pub(crate) fn draw_screen(data: &Vec<Vec<char>>, cursor: &Cursor, window: &mut Window) -> Result<bool, std::io::Error> {
+pub(crate) fn draw_screen(data: &Vec<Vec<char>>, cursor: &Cursor, window: &mut Window, configs: &Config) -> Result<bool, std::io::Error> {
     let _ = execute!(stdout(), MoveTo(0, 0))?;
+    let mut x_offset = 0;
+    if configs.funny_config.wiggle_render {
+        let x_pos = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as f64;
+        x_offset = (5.0 * (f64::sin(x_pos/125.0) + 1.1)) as u16;
+        let _ = execute!(stdout(), MoveTo(x_offset, 0))?;
+    }
     let _ = cursor_inside_window(cursor, window);
 
     let low_bound = window.y_offset;
     let high_bound = cmp::min(data.len(), window.size_y+window.y_offset-1);
     for i in low_bound..high_bound {
-        for j in &data[i] {
+        for (k, j) in data[i].iter().enumerate() {
+            if k > window.size_x {break}
             let _ = write!(stdout(), "{}", j)?;
         }
         if i != high_bound {
-            let _ = write!(stdout(), "\r\n")?;
+            let _ = write!(stdout(), "\r\n{}", " ".repeat(x_offset as usize))?;
         }
     }
 
