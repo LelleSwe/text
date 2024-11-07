@@ -1,11 +1,10 @@
 use std::io::{self, stdout};
 use std::env;
 
-use constants::{DEFAULT_CONFIG, DEFAULT_FUNNY_CONFIG, DEFAULT_KEYBINDS};
 use crossterm::{execute, queue, terminal::{disable_raw_mode, enable_raw_mode, SetSize, EnterAlternateScreen, LeaveAlternateScreen, SetTitle}};
 use crossterm::cursor::{Show, Hide};
 use crossterm::event::KeyEvent;
-use file_interact::{check_save_file, get_configs, read_text_file, Config, FunnyConfig};
+use file_interact::{get_configs, read_text_file, Config};
 
 use crate::file_interact::get_keybinds;
 use crate::user_interact::*;
@@ -17,6 +16,7 @@ mod render;
 mod constants;
 mod file_interact;
 mod user_prompt;
+mod cursor_movement;
 
 
 
@@ -43,21 +43,23 @@ fn main() -> io::Result<()> {
     //Forces the program to run terminate_program()
     //on shutdown through the Drop trait.
     //Mainly to stop raw mode escaping into the terminal on crash.
-    let _proper_term = terminate;
+    let _proper_terminate = Terminate;
     
     //Preparing the command line args, data to be edited and save file.
     let args: Vec<String> = env::args().collect();
     let mut data: Vec<Vec<char>> = vec!(vec!()); 
-    let mut path: String = "".to_string();
+    let mut save_path: String = "".to_string();
     //length is 1 since the command used to run the program also counts.
     if args.len() > 2 {
         println!("Enter one file to open!\n(Command line argument.)");
         return Ok(())
     } else if args.len() == 2 {
-        path = args[1].to_string();
-        data = read_text_file(&path);
+        save_path = args[1].to_string();
+        data = read_text_file(&save_path);
     }
     let configs: Config = get_configs("the_funny.txt");
+    let mut repeat_render = false;
+    if configs.funny_config.wiggle_render == true {repeat_render = true}
     
     //Create the cursor, keybinds and window.
     let Ok((mut cursor, keybinds, mut window)) = setup()
@@ -70,7 +72,7 @@ fn main() -> io::Result<()> {
 
     //Main runtime loop.
     loop {
-        let event: Result<KeyEvent, io::Error> = read_key();
+        let event: Result<KeyEvent, io::Error> = read_key(repeat_render);
         let event: KeyEvent = match event {
             Err(_) => unimplemented!(),
             Ok(event) => event
@@ -80,13 +82,18 @@ fn main() -> io::Result<()> {
         //so like output for various commands.
         let mut to_print: String = "".to_string();
         
-        let _ = process_keypress(&mut data, &mut cursor, &event, &keybinds);
-        let t = check_save_file(&mut path, &data, &event, &keybinds, &window);
-        to_print = match t {
-            Some(t) => t,
-            None => to_print
-        };
-
+        //Todo: Fix lifetime stuff so don't have to clone
+        let mut action = process_keypress(&event, &keybinds, save_path.clone());
+        
+        while match action.clone() {
+            Action::None => false,
+            Action::UtilAction(UtilAction::GetSavePath(a)) => {save_path = a; true},
+            Action::PrintResult(s) => {to_print = s; true},
+            _ => true
+            } {
+            action = do_action(&mut cursor, &mut data, action, &keybinds, &window);
+        }
+        
         let _ = queue!(stdout(), Hide);
         let _ = clear_screen();
         let _ = draw_screen(&data, &cursor, &mut window, &configs);
@@ -98,9 +105,9 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-struct terminate;
+struct Terminate;
 
-impl Drop for terminate {
+impl Drop for Terminate {
     fn drop(&mut self) {
         let _ = terminate_program();
     }

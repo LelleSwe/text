@@ -54,7 +54,13 @@ pub(crate) const DEFAULT_UTIL_KEYBINDS: UtilKeybinds = UtilKeybinds {
         modifiers: KeyModifiers::CONTROL,
         kind: KeyEventKind::Press,
         state: KeyEventState::NONE
-    } 
+    } ,
+    prompt: KeyEvent {
+        code: KeyCode::Char('.'),
+        modifiers: KeyModifiers::ALT,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE
+    }
 };
 
 pub(crate) const DEFAULT_CURSOR_KEYBINDS: CursorKeybinds = CursorKeybinds {

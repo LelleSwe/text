@@ -9,7 +9,7 @@ use crate::constants::DEFAULT_CONFIG;
 use crate::{draw_line, terminate_program, update_cursor, Window};
 use crate::user_interact::{Cursor,read_key, Keybinds};
 
-pub(crate) fn user_prompt(data: &str, window: &Window, (pos_x, pos_y): (u16, u16), keybinds: &Keybinds) -> Vec<char> {
+pub(crate) fn user_prompt(data: &str, window: &Window, (pos_x, pos_y): (u16, u16), keybinds: &Keybinds) -> String {
     let _ = draw_line((pos_x, pos_y), &data);
     let mut g: Vec<char> = vec!();
 
@@ -20,14 +20,15 @@ pub(crate) fn user_prompt(data: &str, window: &Window, (pos_x, pos_y): (u16, u16
     };
     
     loop {
-        let event = read_key();
+        let event = read_key(false);
         let event: KeyEvent = match event {
             Err(_) => unimplemented!(),
             Ok(event) => event
         };
 
         if event == keybinds.DataInteractKeybinds.new_line {
-            return g
+
+            return g.into_iter().collect::<String>();
         }
         if event == keybinds.UtilKeybinds.terminate_program {
             let _ = terminate_program();

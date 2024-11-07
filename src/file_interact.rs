@@ -1,10 +1,12 @@
-use crossterm::event::KeyEvent;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
 use std::io::prelude::*;
 
-use crate::{constants::{DEFAULT_CONFIG, DEFAULT_KEYBINDS}, user_prompt::user_prompt, Cursor, Keybinds, Window};
+use crate::constants::{DEFAULT_CONFIG, DEFAULT_KEYBINDS};
+use crate::user_interact::{Cursor, Keybinds, ModDataAction, UtilAction, Action};
+use crate::render::Window;
+use crate::user_prompt::user_prompt; 
 
 
 /// Reads the data from file.
@@ -36,22 +38,17 @@ pub(crate) fn read_text_file(path: &str) -> Vec<Vec<char>> {
     data
 }
 
-
-pub(crate) fn check_save_file(path: &mut String, data: &Vec<Vec<char>>, event: &KeyEvent, keybinds: &Keybinds, window: &Window) -> Option<String> {
-    if *event == keybinds.UtilKeybinds.save_file {
-        if path == "" {
-            let prompt = "Input file to save to: ".to_string();
-            let vec = user_prompt(&prompt, window, (0, window.size_y as u16), keybinds);
-            for i in vec {
-                path.push(i);
-            }
-        }
-
-        let _ = write_text_file(&path, &data);
-        let printed: String = format!("Saved to file {}", path);
-        return Some(printed)
+pub(crate) fn check_save_file(path: &str, data: &Vec<Vec<char>>) -> Action {
+    if path == "" {
+        return Action::UtilAction(UtilAction::AskSave);
     }
-    None
+
+    let mut printed: String = "Failed to save to file!".to_string();
+    match write_text_file(&path, &data) {
+        Ok(_) => {printed = format!("Saved to file {}", path);},
+        Err(_) => ()
+    } 
+    return Action::PrintResult(printed)
 }
 
 /// Saves the data to file
