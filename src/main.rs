@@ -49,6 +49,7 @@ fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let mut data: Vec<Vec<char>> = vec!(vec!()); 
     let mut save_path: String = "".to_string();
+    let mut is_saved: bool = true;
     //length is 1 since the command used to run the program also counts.
     if args.len() > 2 {
         println!("Enter one file to open!\n(Command line argument.)");
@@ -83,15 +84,18 @@ fn main() -> io::Result<()> {
         let mut to_print: String = "".to_string();
         
         //Todo: Fix lifetime stuff so don't have to clone
-        let mut action = process_keypress(&event, &keybinds, save_path.clone());
+        let mut action = process_keypress(&data, &cursor,&event, &keybinds, save_path.clone());
         
         while match action.clone() {
             Action::None => false,
             Action::UtilAction(UtilAction::GetSavePath(a)) => {save_path = a; true},
-            Action::PrintResult(s) => {to_print = s; true},
+            Action::UtilAction(UtilAction::Save) => {action = Action::UtilAction(UtilAction::SaveAs(save_path.clone())); is_saved = true; true}
+            Action::ModDataAction(_) => {is_saved = false; true},
+            Action::UtilAction(UtilAction::TryKill) => {if is_saved {action = Action::UtilAction(UtilAction::Kill)} else {action = Action::UtilAction(UtilAction::AskSave)}; true}
+            Action::PrintResult(s) => {to_print = s; false},
             _ => true
             } {
-            action = do_action(&mut cursor, &mut data, action, &keybinds, &window);
+            action = do_action(&mut cursor, &mut data, action, &keybinds, &window, configs);
         }
         
         let _ = queue!(stdout(), Hide);

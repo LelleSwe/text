@@ -204,5 +204,7 @@ pub(crate) struct FunnyConfig {
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct Config {
-    pub(crate) funny_config: FunnyConfig
+    pub(crate) funny_config: FunnyConfig,
+    pub(crate) tabs_to_spaces: bool,
+    pub(crate) tabsize: u32
 }

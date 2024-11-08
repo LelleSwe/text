@@ -1,6 +1,6 @@
-use crossterm::event::KeyEvent;
+use crossterm::{cursor, event::KeyEvent};
 
-use crate::user_interact::{Cursor, MoveAction, CursorKeybinds, Keybinds};
+use crate::{constants::DEFAULT_WORD_SEPARATOR, user_interact::{Cursor, CursorKeybinds, Keybinds, MoveAction}};
 
 pub(crate) fn get_cursor_action(keybinds: &Keybinds, move_command: &KeyEvent) -> MoveAction {
     let CursorKeybinds {MoveUp, MoveDown, MoveLeft, MoveRight, MoveLast, MoveFirst, MoveWordLeft, MoveWordRight, MovePageDown, MovePageUp}
@@ -79,6 +79,21 @@ pub(crate) fn move_right(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
     }
 }
 
+pub(crate) fn move_right_noextend(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
+    cursor.pos_x += 1;
+    if cursor.pos_x >= data[cursor.pos_y as usize].len().try_into().unwrap() {
+        if cursor.pos_y == (data.len()-1) as i16 {
+            cursor.pos_x = (data[data.len()-1].len() - 1) as i16;
+        } else {
+            cursor.pos_x = 0;
+        }
+        cursor.pos_y += 1;
+        if cursor.pos_y > (data.len()-1) as i16 {
+            cursor.pos_y = (data.len()-1) as i16;
+        }
+    }
+}
+
 pub(crate) fn move_left(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
     cursor.pos_x -= 1;
     if cursor.pos_x < 0 {
@@ -91,28 +106,47 @@ pub(crate) fn move_left(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
     }
 }
 
+pub(crate) fn move_left_noextend(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
+    cursor.pos_x -= 1;
+    if cursor.pos_x < 0 {
+        if cursor.pos_y == 0 {
+            cursor.pos_x = 0;
+        } else {
+            cursor.pos_y -= 1;
+            cursor.pos_x = (data[cursor.pos_y as usize].len() - 1) as i16;
+        }
+    }
+}
+
 pub(crate) fn move_last(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
     cursor.pos_y = (data.len()-1) as i16;
     //for some reason data[-1] gives compiler error, has to do this instead.
     cursor.pos_x = (data[data.len()-1].len()) as i16;
 }
 
-pub(crate) fn move_first(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
+pub(crate) fn move_first(cursor: &mut Cursor) {
     cursor.pos_x = 0;
     cursor.pos_y = 0;
 }
 
 pub(crate) fn move_word_left(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
-    unimplemented!();
+    let goto = find_left_word(data, cursor).0;
+    cursor.pos_x = goto.pos_x;
+    cursor.pos_y = goto.pos_y;
 }
 
 pub(crate) fn move_word_right(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
-    unimplemented!();
+    let goto = find_right_word(data, cursor).0;
+    cursor.pos_x = goto.pos_x;
+    cursor.pos_y = goto.pos_y;
 }
 
 pub(crate) fn move_page_down(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
     cursor.pos_y += 15;
-    if cursor.pos_y == data.len() as i16 {cursor.pos_y = (data.len()-1) as i16;}
+    if cursor.pos_y > (data.len()-1) as i16 {
+        cursor.pos_y = (data.len()-1) as i16;
+        cursor.pos_x = data[cursor.pos_y as usize].len() as i16;
+    }
     if cursor.pos_x > data[cursor.pos_y as usize].len().try_into().unwrap() {
         cursor.pos_x = data[cursor.pos_y as usize].len() as i16;
     }
@@ -122,16 +156,17 @@ pub(crate) fn move_page_up(data: &Vec<Vec<char>>, cursor: &mut Cursor) {
     cursor.pos_y -= 15;
     if cursor.pos_y < 0 {
         cursor.pos_y = 0;
+        cursor.pos_x = 0;
     }
     if cursor.pos_x > data[cursor.pos_y as usize].len() as i16 {
         cursor.pos_x = data[cursor.pos_y as usize].len() as i16;
     }
 }
 
-pub(crate) fn move_cursor(cursor: &mut Cursor, move_action: &MoveAction, data: &Vec<Vec<char>>, keybinds: &Keybinds) {
+pub(crate) fn move_cursor(cursor: &mut Cursor, move_action: &MoveAction, data: &Vec<Vec<char>>) {
     match move_action {
         MoveAction::MoveDown => move_down(data, cursor),
-        MoveAction::MoveFirst => move_first(data, cursor),
+        MoveAction::MoveFirst => move_first(cursor),
         MoveAction::MoveLast => move_last(data, cursor),
         MoveAction::MoveLeft => move_left(data, cursor),
         MoveAction::MovePageDown => move_page_down(data, cursor),
@@ -142,4 +177,78 @@ pub(crate) fn move_cursor(cursor: &mut Cursor, move_action: &MoveAction, data: &
         MoveAction::MoveWordRight => move_word_right(data, cursor),
         _ => ()
     }
+}
+
+//TODO: This shit sort of works, actually.
+//Should still be extensively tested, though.
+pub(crate) fn find_right_word(data: &Vec<Vec<char>>, cursor: &Cursor) -> (Cursor, i64) {
+    let mut finder: Cursor = cursor.clone();
+    let mut distance: i64 = 0;
+    let mut continued: bool = true;
+
+    if data[finder.pos_y as usize].len() == 0 {
+        let _ = move_right(data, &mut finder);
+        return (finder, distance + 1)
+    }
+    if finder.pos_x >= data[finder.pos_y as usize].len() as i16 {
+        let _ = move_right_noextend(data, &mut finder);
+        return (finder, 1);
+    }
+    
+    while !DEFAULT_WORD_SEPARATOR.contains(&data[finder.pos_y as usize][finder.pos_x as usize]) || continued {
+        if data[finder.pos_y as usize].len() == 0 {return (finder, i64::max(distance, 1))}
+        let current = data[finder.pos_y as usize][finder.pos_x as usize];
+
+        if finder.pos_x == 0 && finder.pos_y == 0 {break};
+        let _ = move_right_noextend(data, &mut finder);
+        distance += 1;
+        if data[finder.pos_y as usize].len() == 0 {break;}
+        if finder.pos_x == 0 && finder.pos_y == 0 {break};
+
+        if finder.pos_y != cursor.pos_y {
+            let _ = move_left(data, &mut finder);
+            break;
+        }
+        let next = data[finder.pos_y as usize][finder.pos_x as usize];
+        continued = current == next && DEFAULT_WORD_SEPARATOR.contains(&current);
+    };
+
+    (finder, i64::max(distance, 1))
+}
+
+//TODO: This shit needs polishing to work better.
+pub(crate) fn find_left_word(data: &Vec<Vec<char>>, cursor: &Cursor) -> (Cursor, i64) {
+    let mut finder: Cursor = cursor.clone();
+    let mut distance: i64 = 0;
+    let mut continued: bool = true;
+
+    if data[finder.pos_y as usize].len() == 0 {
+        let _ = move_left(data, &mut finder);
+        return (finder, distance + 1)
+    }
+    if finder.pos_x >= data[finder.pos_y as usize].len() as i16 {finder.pos_x -= 1;}
+    if finder.pos_x == 0 {
+        let _ = move_left(data, &mut finder);
+        return (finder, 1)
+    }
+    
+    while !DEFAULT_WORD_SEPARATOR.contains(&data[finder.pos_y as usize][finder.pos_x as usize]) || continued {
+        if data[finder.pos_y as usize].len() == 0 {return (finder, i64::max(distance, 1))}
+        let current = data[finder.pos_y as usize][finder.pos_x as usize];
+
+        if finder.pos_x == 0 && finder.pos_y == 0 {break};
+        let _ = move_left_noextend(data, &mut finder);
+        distance += 1;
+        if data[finder.pos_y as usize].len() == 0 {break;}
+        if finder.pos_x == 0 && finder.pos_y == 0 {break};
+
+        if finder.pos_y != cursor.pos_y {
+            let _ = move_right_noextend(data, &mut finder);
+            break;
+        }
+        let next = data[finder.pos_y as usize][finder.pos_x as usize];
+        continued = current == next && DEFAULT_WORD_SEPARATOR.contains(&current);
+    };
+
+    (finder, i64::max(distance, 1))
 }

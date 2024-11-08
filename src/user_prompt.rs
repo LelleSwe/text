@@ -6,7 +6,7 @@ use crossterm::{execute, queue};
 use crossterm::terminal::ClearType;
 
 use crate::constants::DEFAULT_CONFIG;
-use crate::{draw_line, terminate_program, update_cursor, Window};
+use crate::{draw_line, terminate_program, update_cursor, Action, UtilAction, Window};
 use crate::user_interact::{Cursor,read_key, Keybinds};
 
 pub(crate) fn user_prompt(data: &str, window: &Window, (pos_x, pos_y): (u16, u16), keybinds: &Keybinds) -> String {
@@ -18,7 +18,16 @@ pub(crate) fn user_prompt(data: &str, window: &Window, (pos_x, pos_y): (u16, u16
         pos_x: 0,
         pos_y: 0
     };
-    
+
+    //Clears previous lines. 
+    //There's probably a better solution, but can't quite be bothered at the moment.
+    let to_print: String = data.to_string() + &" ".repeat(window.size_x - data.len());
+    let _ = draw_line((pos_x, pos_y), &to_print);
+    let _ = match execute!(stdout(), MoveTo(cursor.pos_x as u16 + print_offset as u16, pos_y)) {
+        Ok(_) => (),
+        Err(_) => ()
+    };
+
     loop {
         let event = read_key(false);
         let event: KeyEvent = match event {
@@ -37,12 +46,26 @@ pub(crate) fn user_prompt(data: &str, window: &Window, (pos_x, pos_y): (u16, u16
         let _ = single_line_process_keypress(&mut g, window, &mut cursor, &event, keybinds);
         let _ = update_cursor(&cursor, window, &DEFAULT_CONFIG);
         let _ = draw_data(&g, (pos_x + print_offset as u16, pos_y));
-        let _ = draw_line((pos_x, pos_y), &data);
+        let _ = draw_line((pos_x, pos_y), data);
         let _ = match execute!(stdout(), MoveTo(cursor.pos_x as u16 + print_offset as u16, pos_y)) {
             Ok(_) => (),
             Err(_) => ()
         };
     }
+}
+
+pub(crate) fn parse_prompt(possible_commands: PossibleCommands, command: &str) -> Action {
+    if command == possible_commands.save {
+        return Action::UtilAction(crate::UtilAction::Save);
+    }
+    if command == possible_commands.force_quit {
+        return Action::UtilAction(UtilAction::Kill);
+    }
+    if command == possible_commands.quit {
+        return Action::UtilAction(UtilAction::TryKill);
+    }
+
+    Action::PrintResult("Not a valid command.".to_string())
 }
 
 pub(crate) fn single_line_process_keypress(data: &mut Vec<char>, window: &Window, cursor: &mut Cursor, event: &KeyEvent, keybinds: &Keybinds) {
@@ -89,4 +112,10 @@ pub(crate) fn draw_data(data: &Vec<char>, (pos_x, pos_y): (u16, u16)) -> Result<
     }
     let _ = stdout().flush();
     Ok(())
+}
+
+pub(crate) struct PossibleCommands {
+    pub(crate) quit: &'static str,
+    pub(crate) force_quit: &'static str,
+    pub(crate) save: &'static str
 }

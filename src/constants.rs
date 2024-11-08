@@ -2,8 +2,11 @@ use crossterm::event::*;
 use crate::file_interact::{Config, FunnyConfig};
 use crate::render::Window;
 
+use crate::user_prompt::PossibleCommands;
 use crate::DataInteractKeybinds;
 use crate::{user_interact::{CursorKeybinds, UtilKeybinds}, Keybinds};
+
+pub(crate) const DEFAULT_WORD_SEPARATOR: [char; 9] = [' ', '.', ',', '[', ']', '{', '}', '(', ')'];
 
 pub(crate) const DEFAULT_WINDOW: Window = Window {
     size_x: 120,
@@ -32,6 +35,22 @@ pub(crate) const DEFAULT_DATA_INTERACT_KEYBINDS: DataInteractKeybinds = DataInte
         state: KeyEventState::NONE
 
     },
+    //Replaced 'CTRL + BACKSPACE' with 'CTRL + h',
+    //see https://github.com/crossterm-rs/crossterm/issues/504 or https://github.com/crossterm-rs/crossterm/issues/685.
+    remove_word_before: KeyEvent {
+        code: KeyCode::Char('h'),
+        modifiers: KeyModifiers::CONTROL,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE
+
+    },
+    remove_word_after: KeyEvent {
+        code: KeyCode::Delete,
+        modifiers: KeyModifiers::CONTROL,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE
+
+    },
     new_line: KeyEvent {
         code: KeyCode::Enter,
         modifiers: KeyModifiers::NONE,
@@ -39,6 +58,12 @@ pub(crate) const DEFAULT_DATA_INTERACT_KEYBINDS: DataInteractKeybinds = DataInte
         state: KeyEventState::NONE
 
     },
+    tab: KeyEvent {
+        code: KeyCode::Tab,
+        modifiers: KeyModifiers::NONE,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE
+    }
     
 };
 
@@ -134,5 +159,13 @@ pub(crate) const DEFAULT_FUNNY_CONFIG: FunnyConfig = FunnyConfig {
 
 
 pub(crate) const DEFAULT_CONFIG: Config = Config {
-    funny_config: DEFAULT_FUNNY_CONFIG
+    funny_config: DEFAULT_FUNNY_CONFIG,
+    tabs_to_spaces: true,
+    tabsize: 3
+};
+
+pub(crate) const DEFAULT_PROMPTS: PossibleCommands = PossibleCommands {
+    quit: "q",
+    force_quit: "q!",
+    save: "sv"
 };
